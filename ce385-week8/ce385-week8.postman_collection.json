@@ -1,0 +1,217 @@
+{
+  "info": {
+    "_postman_id": "ce385-week8-students-api",
+    "name": "CE385 Week8 — Students API",
+    "description": "Postman collection ตามคำสั่ง curl ของขั้นที่ 10.2 (สไลด์ 80) เป๊ะทุกเส้น — เซิร์ฟเวอร์เริ่มที่ http://localhost:3000\n\n## ก่อนยิง\n1. รัน `npm run dev` ในโฟลเดอร์ ce385-week8\n2. ยิงตามลำดับ 1 → 6 · **ยิงพร้อมกันทีเดียวจบ: กด Run Collection** — id ที่ข้อ 3 (POST) สร้าง จะถูกเซฟเป็นตัวแปร `newStudentId` ให้ข้อ 4–6 ใช้อัตโนมัติ ไม่ต้องคัดลอก-วางเอง\n\n## ผลที่ต้องได้ (สไลด์ 81)\n- 1) อ่านทั้งหมด (แบ่งหน้า) → 200 · data 3 คน · meta = { page:1, limit:3, total:5, totalPages:2 }\n- 2) ค้นหา + เรียง → 200 · data 1 คน · total: 1\n- 3) สร้างใหม่ → **201** · header `Location: /api/v1/students/<id>` · data.score = 70\n- 4) อ่านรายการเดียว → 200 · เป็นคนเดียวกับที่เพิ่งสร้าง (code 66019999)\n- 5) แก้คะแนน → 200 · data.score = 95 · **updatedAt เปลี่ยนจากเดิม**\n- 6) ลบ → **204** · ไม่มีเนื้อหาตอบกลับเลย (Content-Length: 0)\n\n## ผลตอนทำให้พัง (ขั้นที่ 11 — สไลด์ 82–83)\n- ยิงข้อ 6 ซ้ำ (ลบครั้งที่ 2) → 404 NOT_FOUND (P2025)\n-ยิงข้อ 3 ซ้ำรหัสเดิม → 409 DUPLICATE · ส่ง body `{}` → 422 พร้อม details ทีละฟิลด์",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "newStudentId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1) อ่านทั้งหมด (แบ่งหน้า)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/students?page=1&limit=3",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "students"],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "3" }
+          ]
+        },
+        "description": "เทียบ curl:\n\n`curl \"http://localhost:3000/api/v1/students?page=1&limit=3\"`\n\nต้องได้ **200** และเห็นนักศึกษาทั้งหมด (ยอดรวมใน `meta.total` = 5 คน · หน้านี้แสดง 3 คน)"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"data หน้านี้มี 3 คน\", () => pm.expect(pm.response.json().data).to.have.lengthOf(3));",
+              "pm.test(\"meta.total = 5 (เห็นนักศึกษา 5 คน)\", () => pm.expect(pm.response.json().meta.total).to.eql(5));",
+              "pm.test(\"meta = { page:1, limit:3, totalPages:2 }\", () => {",
+              "  const meta = pm.response.json().meta;",
+              "  pm.expect(meta.page).to.eql(1);",
+              "  pm.expect(meta.limit).to.eql(3);",
+              "  pm.expect(meta.totalPages).to.eql(2);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2) ค้นหา + เรียง",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/students?q=somying&sort=score&order=asc",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "students"],
+          "query": [
+            { "key": "q", "value": "somying" },
+            { "key": "sort", "value": "score" },
+            { "key": "order", "value": "asc" }
+          ]
+        },
+        "description": "เทียบ curl:\n\n`curl \"http://localhost:3000/api/v1/students?q=somying&sort=score&order=asc\"`\n\nต้องได้ **200** · คำค้นหา \"somying\" เจอ 1 คน (สมหญิง รักเรียน · email somying@dpu.ac.th)"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"เจอ 1 คน ตามคำค้น \"somying\"\", () => {",
+              "  const j = pm.response.json();",
+              "  pm.expect(j.meta.total).to.eql(1);",
+              "  pm.expect(j.data[0].email).to.eql(\"somying@dpu.ac.th\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3) สร้างใหม่",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"66019999\",\n  \"name\": \"Test Student\",\n  \"email\": \"test@dpu.ac.th\",\n  \"score\": 70\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/students",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "students"]
+        },
+        "description": "เทียบ curl:\n\n`curl -i -X POST http://localhost:3000/api/v1/students -H \"Content-Type: application/json\" -d '{\"code\":\"66019999\",\"name\":\"Test Student\",\"email\":\"test@dpu.ac.th\",\"score\":70}'`\n\n- ต้องได้ **201 Created**\n- header `Location:` ชี้ไปที่ `/api/v1/students/<id>` (ธรรมเนียม REST ที่คนลืมบ่อยที่สุด)\n- `data.score = 70`\n-ส่งไม่ส่ง score ก็ได้ → จะได้ 0 และ active=true จาก `.default()` (กรณี 3b สไลด์ 81)\n- ยิงซ้ำรหัสเดิม → **409 DUPLICATE** (กรณี จ สไลด์ 83)"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"status 201 Created\", () => pm.response.to.have.status(201));",
+              "pm.test(\"มี header Location ชี้ไปที่ของใหม่\", () => pm.expect(pm.response.headers.get(\"Location\")).to.include(\"/api/v1/students/\"));",
+              "pm.test(\"data.score = 70\", () => pm.expect(pm.response.json().data.score).to.eql(70));",
+              "// เก็บ id ไว้ให้ข้อ 4–6 ใช้ (ตัวแปร: newStudentId)",
+              "const data = pm.response.json();",
+              "pm.collectionVariables.set(\"newStudentId\", data.data.id);",
+              "console.log(\"เซฟ newStudentId =\", data.data.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4) อ่านรายการเดียว",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/students/{{newStudentId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "students", "{{newStudentId}}"]
+        },
+        "description": "เทียบ curl:\n\n`curl http://localhost:3000/api/v1/students/<ID>`\n\nต้องได้ **200** · เป็นคนเดียวกับที่เพิ่งสร้าง (code 66019999) — ใช้ `{{newStudentId}}` ที่ข้อ 3 เซฟไว้\n\nถ้า id ไม่ใช่ UUID จะได้ 400 (กรณี ช) · ถ้า UUID ถูกแต่ไม่มีแถวนี้จะได้ 404 NOT_FOUND (กรณี ฉ)"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"เป็นคนที่เพิ่งสร้าง (code 66019999)\", () => pm.expect(pm.response.json().data.code).to.eql(\"66019999\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5) แก้คะแนน",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"score\": 95\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/students/{{newStudentId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "students", "{{newStudentId}}"]
+        },
+        "description": "เทียบ curl:\n\n`curl -X PATCH http://localhost:3000/api/v1/students/<ID> -H \"Content-Type: application/json\" -d '{\"score\":95}'`\n\n- ต้องได้ **200**\n- `data.score = 95`\n- **updatedAt เปลี่ยนไปจากเดิม** (สำคัญ — Prisma อัปเดตเวลาให้เอง)\n\nส่ง body `{}` ว่าง ๆ → 422 \"ต้องส่งอย่างน้อยหนึ่งฟิลด์ที่ต้องการแก้\" (กรณี ง สไลด์ 82) · ส่งฟิลด์ที่ไม่รู้จัก เช่น nickname → 422 จาก strictObject (กรณี ค)"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"data.score = 95\", () => pm.expect(pm.response.json().data.score).to.eql(95));",
+              "pm.test(\"updatedAt เปลี่ยนจากเดิม\", () => {",
+              "  const d = pm.response.json().data;",
+              "  pm.expect(d.updatedAt).to.not.eql(d.createdAt);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6) ลบ",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/students/{{newStudentId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "students", "{{newStudentId}}"]
+        },
+        "description": "เทียบ curl:\n\n`curl -i -X DELETE http://localhost:3000/api/v1/students/<ID>`\n\nต้องได้ **204 No Content** — และ**ไม่มีเนื้อหาตอบกลับเลย** (Content-Length: 0) เพราะปลายทางใช้ `.end()` ไม่ใช่ `.json()`\n\n- ยิงซ้ำครั้งที่สอง (id เดิมถูกลบไปแล้ว) → **404 NOT_FOUND** เช่น `{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"ไม่พบข้อมูลที่ต้องการแก้ไขหรือลบ\"}}` (กรณี ซ สไลด์ 83)"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"status 204 No Content\", () => pm.response.to.have.status(204));",
+              "pm.test(\"ไม่มีเนื้อหาตอบกลับ\", () => pm.expect(pm.response.text()).to.eql(\"\"));",
+              "// เคลียร์ id เดิม ให้รอบ Run ที่ถัดไปสดใหม่",
+              "pm.collectionVariables.unset(\"newStudentId\");"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
